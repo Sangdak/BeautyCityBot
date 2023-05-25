@@ -9,6 +9,7 @@ readme = "README.md"
 python = "^3.11"
 django = "^4.2.1"
 environs = "^9.5.0"
+aiogram = "^3.0.0b7"
 
 
 [build-system]
