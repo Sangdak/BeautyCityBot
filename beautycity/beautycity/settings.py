@@ -36,6 +36,7 @@ ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default='localhost')
 # Application definition
 
 INSTALLED_APPS = [
+    'mainapp.apps.MainappConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
