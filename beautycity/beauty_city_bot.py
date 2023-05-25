@@ -1,10 +1,17 @@
-from config import TG_BOT_TOKEN
+import os
+import django
+
+from beautycity.settings import TG_BOT_TOKEN
+
 from aiogram import Bot, Dispatcher
 from aiogram.types import (Message, KeyboardButton, ReplyKeyboardMarkup,
                            InlineKeyboardButton, InlineKeyboardMarkup,
                            ReplyKeyboardRemove, CallbackQuery)
 from aiogram.filters import CommandStart, Text
 
+
+os.environ['DJANGO_SETTINGS_MODULE'] = 'beautycity.settings'
+django.setup()
 
 bot: Bot = Bot(TG_BOT_TOKEN)
 dp: Dispatcher = Dispatcher()
