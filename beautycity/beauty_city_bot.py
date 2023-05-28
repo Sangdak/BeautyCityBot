@@ -4,7 +4,7 @@ import re
 
 from beautycity.settings import TG_BOT_TOKEN
 
-from aiogram import Bot, Dispatcher, F
+from aiogram import Bot, Dispatcher
 from aiogram.types import (Message, KeyboardButton, ReplyKeyboardMarkup,
                            InlineKeyboardButton, InlineKeyboardMarkup,
                            ReplyKeyboardRemove, CallbackQuery)
@@ -30,6 +30,7 @@ class FSM(StatesGroup):
     time_selection = State()
     fill_name = State()
     fill_phone = State()
+    fill_feedback = State()
 
 
 def get_masters_hours(masters, schedule):
@@ -43,11 +44,7 @@ def get_masters_hours(masters, schedule):
     return masters
 
 
-# work_hours = ('10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', )
-# weekdays: list[str] = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС']
-# available_hours: list[str] = []
-
-# TODO: get_schedule() - требуется функция, которая будет возвращать коллекцию с расписанием мастеров
+# TODO: schedule = get_schedule() - требуется функция, которая будет возвращать коллекцию с расписанием мастеров
 schedule = {'25.05': {'10:00': ('Ольга', 'Татьяна'),
                       '10:30': ('Ольга',),
                       '11:00': ('Ольга',),
@@ -88,7 +85,10 @@ schedule = {'25.05': {'10:00': ('Ольга', 'Татьяна'),
                       }
             }
 
-# TODO: get_masters() - требуется функция, которая будет возвращать коллекцию с именами мастеров
+# TODO: existing_users = get_existing_users() - требуется функция, которая будет возвращать коллекцию с пользователями из БД
+existing_users = (375161914,)
+
+# TODO: masters = get_masters() - требуется функция, которая будет возвращать коллекцию с именами мастеров
 masters = {'Ольга': {},
            'Татьяна': {}}
 
@@ -99,44 +99,60 @@ prices: dict[str: int] = {'Макияж': 2000,
                           'Маникюр': 800}
 
 users: dict = {}
+feedbacks: dict = {}
 
-about_us: KeyboardButton = KeyboardButton(text='О нас')
-feedback: KeyboardButton = KeyboardButton(text='Оставить отзыв')
-appointment: KeyboardButton = KeyboardButton(text='Записаться на процедуру')
-makeup: KeyboardButton = KeyboardButton(text='Макияж')
-hair_coloring: KeyboardButton = KeyboardButton(text='Покраска волос')
-manicure: KeyboardButton = KeyboardButton(text='Маникюр')
-choose_master: KeyboardButton = KeyboardButton(text='Выбрать мастера')
-choose_date: KeyboardButton = KeyboardButton(text='Выбрать дату и время')
+about_us_button: KeyboardButton = KeyboardButton(text='О нас')
+feedback_button: KeyboardButton = KeyboardButton(text='Оставить отзыв')
+appointment_button: KeyboardButton = KeyboardButton(text='Записаться на процедуру')
+makeup_button: KeyboardButton = KeyboardButton(text='Макияж')
+hair_coloring_button: KeyboardButton = KeyboardButton(text='Покраска волос')
+manicure_button: KeyboardButton = KeyboardButton(text='Маникюр')
+choose_master_button: KeyboardButton = KeyboardButton(text='Выбрать мастера')
+choose_date_button: KeyboardButton = KeyboardButton(text='Выбрать дату и время')
+help_button: KeyboardButton = KeyboardButton(text='Возникли вопросы? Пожалуйста, свяжитесь с нашим менеджером')
+yes_button: KeyboardButton = KeyboardButton(text='Да')
+no_button: KeyboardButton = KeyboardButton(text='Нет')
 
-approval_button: InlineKeyboardButton = InlineKeyboardButton(text='Продолжить',
-                                                             callback_data='Продолжить')
-
+approval_button: InlineKeyboardButton = InlineKeyboardButton(
+    text='Продолжить', callback_data='Продолжить')
 
 main_page_keyboard: ReplyKeyboardMarkup = ReplyKeyboardMarkup(keyboard=[
-    [appointment], [feedback], [about_us]
+    [appointment_button], [feedback_button], [about_us_button], [help_button]
     ], resize_keyboard=True)
+main_page_keyboard_without_feedback: ReplyKeyboardMarkup = ReplyKeyboardMarkup(
+    keyboard=[[appointment_button], [about_us_button], [help_button]],
+    resize_keyboard=True)
 procedures_keyboard: ReplyKeyboardMarkup = ReplyKeyboardMarkup(keyboard=[
-    [makeup], [hair_coloring], [manicure]
+    [makeup_button], [hair_coloring_button], [manicure_button], [help_button]
     ], resize_keyboard=True)
-choose_master_or_date_keyboard: ReplyKeyboardMarkup = ReplyKeyboardMarkup(keyboard=[
-    [choose_master], [choose_date]
-    ], resize_keyboard=True)
-approval_keyboard: InlineKeyboardMarkup = InlineKeyboardMarkup(inline_keyboard=[[approval_button]])
+choose_master_or_date_keyboard: ReplyKeyboardMarkup = ReplyKeyboardMarkup(
+    keyboard=[
+        [choose_master_button], [choose_date_button], [help_button]
+        ], resize_keyboard=True)
+yes_no_keyboard: ReplyKeyboardMarkup = ReplyKeyboardMarkup(
+    keyboard=[[yes_button, no_button]], resize_keyboard=True)
+
+approval_keyboard: InlineKeyboardMarkup = InlineKeyboardMarkup(
+    inline_keyboard=[[approval_button]])
 
 
 @dp.message(CommandStart())
-async def process_start_command(message: Message):
-    if message.from_user.id not in users:
-        users[message.from_user.id] = {'procedure': None,
-                                       'date': None,
-                                       'hour': None,
-                                       'master': None,
-                                       'name': None,
-                                       'phone': None
-                                       }
+async def process_start_command(message: Message, state: FSMContext):
+    users[message.from_user.id] = {'procedure': None,
+                                   'date': None,
+                                   'hour': None,
+                                   'master': None,
+                                   'name': None,
+                                   'phone': None,
+                                   'feedback': None,
+                                   }
+    if message.from_user.id in existing_users:
+        keyboard = main_page_keyboard
+    else:
+        keyboard = main_page_keyboard_without_feedback
     await message.answer(text='Hello',
-                         reply_markup=main_page_keyboard)
+                         reply_markup=keyboard)
+    await state.set_state(default_state)
 
 
 @dp.message(StateFilter(default_state),
@@ -148,7 +164,7 @@ async def process_about_us_button(message: Message):
 
 
 @dp.message(StateFilter(default_state),
-            Text(text='Записаться на процедуру'))
+            Text(text=['Записаться на процедуру', 'Да']))
 async def process_appointment_button(message: Message):
     await message.answer(text='Выберите процедуру:',
                          reply_markup=procedures_keyboard)
@@ -177,6 +193,7 @@ async def process_master_selection(message: Message, state: FSMContext):
     kb_builder: ReplyKeyboardBuilder = ReplyKeyboardBuilder()
     buttons = [KeyboardButton(text=master) for master in masters_schedule]
     kb_builder.row(*buttons, width=3)
+    kb_builder.row(help_button)
     await message.answer(text='Выберите мастера:',
                          reply_markup=kb_builder.as_markup(resize_keyboard=True))
     await state.set_state(FSM.master_selection)
@@ -191,6 +208,7 @@ async def process_master_date_selection(message: Message):
     kb_builder: ReplyKeyboardBuilder = ReplyKeyboardBuilder()
     buttons = [KeyboardButton(text=date) for date in masters_schedule[message.text]]
     kb_builder.row(*buttons, width=4)
+    kb_builder.row(help_button)
     await message.answer(text='Выберите день:',
                          reply_markup=kb_builder.as_markup(resize_keyboard=True))
 
@@ -211,6 +229,7 @@ async def process_master_time_selection(message: Message):
         else:
             buttons.append(KeyboardButton(text=f'{hour} - н/д'))
     kb_builder.row(*buttons, width=4)
+    kb_builder.row(help_button)
     await message.answer(text='Выберите свободное время:',
                          reply_markup=kb_builder.as_markup(resize_keyboard=True))
 
@@ -231,13 +250,15 @@ async def process_date_selection(message: Message, state: FSMContext):
     kb_builder: ReplyKeyboardBuilder = ReplyKeyboardBuilder()
     buttons = [KeyboardButton(text=date) for date in schedule.keys()]
     kb_builder.row(*buttons)
+    kb_builder.row(help_button)
     await message.answer(text='Выберите день:',
                          reply_markup=kb_builder.as_markup(resize_keyboard=True))
     await state.set_state(FSM.time_selection)
 
 
 # случай, когда сначала выбираем время
-@dp.message(StateFilter(FSM.time_selection), lambda msg: re.fullmatch(r'\d\d\.\d\d', msg.text))
+@dp.message(StateFilter(FSM.time_selection),
+            lambda msg: re.fullmatch(r'\d\d\.\d\d', msg.text))
 async def process_time_selection(message: Message):
     users[message.from_user.id]['date'] = message.text
     kb_builder: ReplyKeyboardBuilder = ReplyKeyboardBuilder()
@@ -248,6 +269,7 @@ async def process_time_selection(message: Message):
         else:
             buttons.append(KeyboardButton(text=f'{hour} - н/д'))
     kb_builder.row(*buttons, width=4)
+    kb_builder.row(help_button)
     await message.answer(text='Выберите свободное время:',
                          reply_markup=kb_builder.as_markup(resize_keyboard=True))
 
@@ -262,6 +284,7 @@ async def process_time_master_selection(message: Message):
     kb_builder: ReplyKeyboardBuilder = ReplyKeyboardBuilder()
     buttons = [KeyboardButton(text=master) for master in schedule[date][hour]]
     kb_builder.row(*buttons, width=4)
+    kb_builder.row(help_button)
     await message.answer(text='Выберите свободного мастера:',
                          reply_markup=kb_builder.as_markup(resize_keyboard=True))
 
@@ -289,14 +312,50 @@ async def process_name_input(message: Message, state: FSMContext):
 async def process_phone_input(message: Message, state: FSMContext):
     users[message.from_user.id]['phone'] = message.text
     await message.answer(
-        text=f'Вы записаны на "{users[message.from_user.id]["procedure"]}" в '
-        f'{users[message.from_user.id]["date"]} в {users[message.from_user.id]["hour"]} часов\n'
-        f'Имя мастера: {users[message.from_user.id]["master"]}')
+        text=f'Вы записаны на услугу:\n"{users[message.from_user.id]["procedure"]}"\nв '
+        f'{users[message.from_user.id]["date"]} {users[message.from_user.id]["hour"]}\n\n'
+        f'Имя мастера:\n{users[message.from_user.id]["master"]}')
     await state.set_state(default_state)
-    # TODO: Функция, которая отправляет собранные в словарь users данные в БД
+    # TODO: send_appointment(users[message.from_user.id]) - Функция, которая отправляет собранные в словарь users данные в БД для текущего пользователя
 
 
-@dp.message()
+@dp.message(StateFilter(default_state),
+            Text(text='Оставить отзыв'))
+async def process_feedback_master(message: Message, state: FSMContext):
+    kb_builder: ReplyKeyboardBuilder = ReplyKeyboardBuilder()
+    buttons = [KeyboardButton(text=master) for master in masters_schedule]
+    kb_builder.row(*buttons, width=3)
+    await message.answer(
+        text='Выберите мастера:',
+        reply_markup=kb_builder.as_markup(resize_keyboard=True))
+    await state.set_state(FSM.fill_feedback)
+
+
+@dp.message(StateFilter(FSM.fill_feedback),
+            lambda msg: msg.text in masters_schedule)
+async def process_feedback(message: Message, state: FSMContext):
+    await message.answer(text='Оставьте ваш отзыв:',
+                         reply_markup=ReplyKeyboardRemove())
+
+
+@dp.message(StateFilter(FSM.fill_feedback),
+            ~Text(text=['Записаться на процедуру', 'О нас', 'Возникли вопросы? Пожалуйста, свяжитесь с нашим менеджером', 'Оставить отзыв']))
+async def send_feedback(message: Message, state: FSMContext):
+    feedbacks[message.from_user.id] = message.text
+    await message.answer(text='Спасибо за отзыв!')
+    await message.answer(text='Желаете записаться на новую процедуру?',
+                         reply_markup=yes_no_keyboard)
+    await state.set_state(default_state)
+    # TODO send_feedback(feedbacks[message.from_user.id]) - Функция, которая отправляет отзыв в БД
+
+
+@dp.message(Text(text='Возникли вопросы? Пожалуйста, свяжитесь с нашим менеджером'))
+async def process_help_button(message: Message):
+    await message.answer(text='У вас возникли вопросы?\nПожалуйста, свяжитесь '
+                         'с нашим менеджером по номеру: +7(ххх)ххх-хх-хх')
+
+
+@dp.message(~Text(text='Нет'))
 async def process_incorrect_input(message: Message):
     await message.answer(text='Ошибка ввода! Пожалуйста, введите корректные данные.')
 
