@@ -62,15 +62,6 @@ class Registration(models.Model):
 
 
     def create(reg_meta):
-        reg_meta = {'procedure': 'Манюкюр',
-                         'date': '04.06 Вс',
-                         'hour': '15:30',
-                       'master': 'Татьяна',
-                         'name': 'Марин',
-                        'phone': '+74135435136',
-                  'telegram_id': 'asd135435484',
-                        }
-
         master = Master.objects.filter(name=reg_meta['master']).first()
         procedure = Hairdressing.objects.filter(named=reg_meta['procedure']).first()
         date = _get_datetime_from_day_hour(reg_meta['date'], reg_meta['hour'])
@@ -83,7 +74,6 @@ class Registration(models.Model):
                 telegram_id=reg_meta['telegram_id'])
         else:
             client = clients.first()
-        print(f' id: {client.id}')
         
         registration = Registration.objects.create(
             client=client,
