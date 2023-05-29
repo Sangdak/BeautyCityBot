@@ -1,8 +1,6 @@
 import os
-import django
-import re
 
-from beautycity.settings import TG_BOT_TOKEN
+import re
 
 from aiogram import Bot, Dispatcher
 from aiogram.types import (Message, KeyboardButton, ReplyKeyboardMarkup,
@@ -15,11 +13,19 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
 
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'beautycity.settings')
+import django
+from django.conf import settings
 
-os.environ['DJANGO_SETTINGS_MODULE'] = 'beautycity.settings'
-django.setup()
+if not settings.configured:
+    django.setup()
 
+from beautycity.settings import TG_BOT_TOKEN
 from mainapp.models import Registration, Client, Master, Hairdressing
+
+
+# os.environ['DJANGO_SETTINGS_MODULE'] = 'beautycity.settings'
+# django.setup()
 
 
 storage: MemoryStorage = MemoryStorage()
@@ -46,64 +52,64 @@ def get_masters_hours(masters, schedule):
     return masters
 
 
-# TODO: schedule = get_schedule() - требуется функция, которая будет возвращать коллекцию с расписанием мастеров
-schedule = {'25.05': {'10:00': ('Ольга', 'Татьяна'),
-                      '10:30': ('Ольга',),
-                      '11:00': ('Ольга',),
-                      '11:30': ('Татьяна',),
-                      '12:00': (),
-                      '12:30': (),
-                      '13:00': ('Ольга', 'Татьяна',),
-                      '13:30': (),
-                      '14:00': ('Татьяна',),
-                      '14:30': (),
-                      '15:00': ('Ольга', 'Татьяна',),
-                      '15:30': (),
-                      '16:00': ('Ольга',),
-                      '16:30': (),
-                      '17:00': ('Татьяна',),
-                      '17:30': (),
-                      '18:00': ('Ольга', 'Татьяна',),
-                      '18:30': ('Ольга',),
-                      },
-            '26.05': {'10:00': ('Ольга',),
-                      '10:30': (),
-                      '11:00': ('Ольга',),
-                      '11:30': (),
-                      '12:00': ('Ольга',),
-                      '12:30': (),
-                      '13:00': (),
-                      '13:30': ('Ольга',),
-                      '14:00': (),
-                      '14:30': (),
-                      '15:00': ('Ольга',),
-                      '15:30': (),
-                      '16:00': ('Ольга',),
-                      '16:30': (),
-                      '17:00': (),
-                      '17:30': ('Ольга',),
-                      '18:00': (),
-                      '18:30': (),
-                      }
-            }
-# schedule = Registration.free_time()
+# # TODO: schedule = get_schedule() - требуется функция, которая будет возвращать коллекцию с расписанием мастеров
+# schedule = {'25.05': {'10:00': ('Ольга', 'Татьяна'),
+#                       '10:30': ('Ольга',),
+#                       '11:00': ('Ольга',),
+#                       '11:30': ('Татьяна',),
+#                       '12:00': (),
+#                       '12:30': (),
+#                       '13:00': ('Ольга', 'Татьяна',),
+#                       '13:30': (),
+#                       '14:00': ('Татьяна',),
+#                       '14:30': (),
+#                       '15:00': ('Ольга', 'Татьяна',),
+#                       '15:30': (),
+#                       '16:00': ('Ольга',),
+#                       '16:30': (),
+#                       '17:00': ('Татьяна',),
+#                       '17:30': (),
+#                       '18:00': ('Ольга', 'Татьяна',),
+#                       '18:30': ('Ольга',),
+#                       },
+#             '26.05': {'10:00': ('Ольга',),
+#                       '10:30': (),
+#                       '11:00': ('Ольга',),
+#                       '11:30': (),
+#                       '12:00': ('Ольга',),
+#                       '12:30': (),
+#                       '13:00': (),
+#                       '13:30': ('Ольга',),
+#                       '14:00': (),
+#                       '14:30': (),
+#                       '15:00': ('Ольга',),
+#                       '15:30': (),
+#                       '16:00': ('Ольга',),
+#                       '16:30': (),
+#                       '17:00': (),
+#                       '17:30': ('Ольга',),
+#                       '18:00': (),
+#                       '18:30': (),
+#                       }
+#             }
+schedule = Registration.free_time()
 
 # TODO: existing_users = get_existing_users() - требуется функция, которая будет возвращать коллекцию с пользователями из БД
-existing_users = (375161914,)
-# existing_users = Client.objects.all()
+# existing_users = (375161914,)
+existing_users = Client.objects.all()
 
-# TODO: masters = get_masters() - требуется функция, которая будет возвращать коллекцию с именами мастеров
+# TODO: masters = get_masters() - требуется функция, которая будет возвращать колл/екцию с именами мастеров
 # не совсем понятно зачем нужны мастера?
-masters = {'Ольга': {},
-           'Татьяна': {}}
-# masters = Master.objects.all()
+# masters = {'Ольга': {},
+#            'Татьяна': {}}
+masters = Master.objects.all()
 
 masters_schedule = get_masters_hours(masters, schedule)
 
-prices: dict[str: int] = {'Макияж': 2000,
-                          'Покраска волос': 3500,
-                          'Маникюр': 800}
-# prices = Hairdressing.objects.all()
+# prices: dict[str: int] = {'Макияж': 2000,
+#                           'Покраска волос': 3500,
+#                           'Маникюр': 800}
+prices = Hairdressing.objects.all()
 
 users: dict = {}
 feedbacks: dict = {}
