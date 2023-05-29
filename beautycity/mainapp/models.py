@@ -62,14 +62,36 @@ class Registration(models.Model):
 
 
     def create(reg_meta):
-        # {'procedure': None,
-        #       'date': None,
-        #       'hour': None,
-        #     'master': None,
-        #       'name': None,
-        #      'phone': None,
+        reg_meta = {'procedure': 'Манюкюр',
+                         'date': '04.06 Вс',
+                         'hour': '15:30',
+                       'master': 'Татьяна',
+                         'name': 'Марин',
+                        'phone': '+74135435136',
+                  'telegram_id': 'asd135435484',
+                        }
+
+        master = Master.objects.filter(name=reg_meta['master']).first()
+        procedure = Hairdressing.objects.filter(named=reg_meta['procedure']).first()
+        date = _get_datetime_from_day_hour(reg_meta['date'], reg_meta['hour'])
+        clients = Client.objects.filter(name=reg_meta['name'], phone=reg_meta['phone'])
+        client = None
+        if not clients:
+            client = Client.objects.create(
+                name=reg_meta['name'],
+                phone=reg_meta['phone'],
+                telegram_id=reg_meta['telegram_id'])
+        else:
+            client = clients.first()
+        print(f' id: {client.id}')
         
-        pass
+        registration = Registration.objects.create(
+            client=client,
+            master=master,
+            hairdressing=procedure,
+            date=date,
+             )
+        return registration != None
 
 
     def get_datatime_from_date_dict(day, hour='00:00'):
