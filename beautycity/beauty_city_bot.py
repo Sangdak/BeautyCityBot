@@ -14,6 +14,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'beautycity.settings')
+os.environ['DJANGO_ALLOW_ASYNC_UNSAFE'] = 'true'
 import django
 from django.conf import settings
 
