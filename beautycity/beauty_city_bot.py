@@ -14,7 +14,7 @@ from aiogram.filters.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
-
+from .mainapp.models import Registration, Client, Master, Hairdressing
 
 os.environ['DJANGO_SETTINGS_MODULE'] = 'beautycity.settings'
 django.setup()
@@ -84,19 +84,24 @@ schedule = {'25.05': {'10:00': ('Ольга', 'Татьяна'),
                       '18:30': (),
                       }
             }
+schedule = Registration.free_time()
 
 # TODO: existing_users = get_existing_users() - требуется функция, которая будет возвращать коллекцию с пользователями из БД
 existing_users = (375161914,)
+existing_users = Client.objects.all()
 
 # TODO: masters = get_masters() - требуется функция, которая будет возвращать коллекцию с именами мастеров
+# не совсем понятно зачем нужны мастера?
 masters = {'Ольга': {},
            'Татьяна': {}}
+masters = Master.objects.all()
 
 masters_schedule = get_masters_hours(masters, schedule)
 
 prices: dict[str: int] = {'Макияж': 2000,
                           'Покраска волос': 3500,
                           'Маникюр': 800}
+prices = Hairdressing.objects.all()
 
 users: dict = {}
 feedbacks: dict = {}

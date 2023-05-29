@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 
 def _get_datetime_from_day_hour(day, hour='00:00'):
+    day = day.split()[0]
     return pd.to_datetime('{}.{} {}'.format(
         day, str(datetime.now().year), hour),
         dayfirst=True).to_pydatetime().replace(tzinfo=timezone.utc)
@@ -59,6 +60,11 @@ class Registration(models.Model):
             self.date,
             )
 
+
+    def get_datatime_from_date_dict(day, hour='00:00'):
+        return _get_datetime_from_day_hour(day, hour)
+
+
     def free_time():
         start_day = datetime.now()
         print(start_day)
@@ -92,6 +98,7 @@ class Registration(models.Model):
             free_hours = {}
             for work_hour in work_hours:
                 masters_hour_name = masters_name
+                # TODO проверка времени
                 free_hours[work_hour] = masters_hour_name.copy()
                 for registration in registrations:
                     if registration.date == _get_datetime_from_day_hour(
@@ -99,7 +106,7 @@ class Registration(models.Model):
                                     work_hour):
                         free_hours[work_hour].remove(registration.master.name)
 
-            free_dates[day] = free_hours
+            free_dates['{} {}'.format(day, (_get_weekday(day)))] = free_hours
 
         return free_dates
 
