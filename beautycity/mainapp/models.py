@@ -61,6 +61,17 @@ class Registration(models.Model):
             )
 
 
+    def create(reg_meta):
+        # {'procedure': None,
+        #       'date': None,
+        #       'hour': None,
+        #     'master': None,
+        #       'name': None,
+        #      'phone': None,
+        
+        pass
+
+
     def get_datatime_from_date_dict(day, hour='00:00'):
         return _get_datetime_from_day_hour(day, hour)
 
