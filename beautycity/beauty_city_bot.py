@@ -1,5 +1,5 @@
 import os
-
+from pprint import pprint
 import re
 
 from aiogram import Bot, Dispatcher
@@ -51,22 +51,25 @@ def get_masters_hours(masters, schedule):
                     masters[master][day] = lst
     return masters
 
-schedule = Registration.free_time()
 
-existing_users = Client.objects.all()
+schedule = Registration.free_time()
+existing_users = [client.telegram_id for client in Client.objects.all()]
+masters = [master.name for master in Master.objects.all()]
+
+procedures = {}
+for entry in Hairdressing.objects.all():
+    procedures[entry.named] = entry.price
+
+# masters_schedule = get_masters_hours(masters, schedule)
 
 # TODO: masters = get_masters() - требуется функция, которая будет возвращать колл/екцию с именами мастеров
 # не совсем понятно зачем нужны мастера?
 # masters = {'Ольга': {},
 #            'Татьяна': {}}
-masters = Master.objects.all()
-
-masters_schedule = get_masters_hours(masters, schedule)
-
 # prices: dict[str: int] = {'Макияж': 2000,
 #                           'Покраска волос': 3500,
 #                           'Маникюр': 800}
-prices = Hairdressing.objects.all()
+
 
 users: dict = {}
 feedbacks: dict = {}
@@ -74,12 +77,9 @@ feedbacks: dict = {}
 about_us_button: KeyboardButton = KeyboardButton(text='О нас')
 feedback_button: KeyboardButton = KeyboardButton(text='Оставить отзыв')
 appointment_button: KeyboardButton = KeyboardButton(text='Записаться на процедуру')
-makeup_button: KeyboardButton = KeyboardButton(text='Макияж')
-hair_coloring_button: KeyboardButton = KeyboardButton(text='Покраска волос')
-manicure_button: KeyboardButton = KeyboardButton(text='Маникюр')
 choose_master_button: KeyboardButton = KeyboardButton(text='Выбрать мастера')
 choose_date_button: KeyboardButton = KeyboardButton(text='Выбрать дату и время')
-help_button: KeyboardButton = KeyboardButton(text='Возникли вопросы? Пожалуйста, свяжитесь с нашим менеджером')
+help_button: KeyboardButton = KeyboardButton(text='Возникли вопросы? Свяжитесь с нашим менеджером')
 yes_button: KeyboardButton = KeyboardButton(text='Да')
 no_button: KeyboardButton = KeyboardButton(text='Нет')
 
@@ -92,9 +92,6 @@ main_page_keyboard: ReplyKeyboardMarkup = ReplyKeyboardMarkup(keyboard=[
 main_page_keyboard_without_feedback: ReplyKeyboardMarkup = ReplyKeyboardMarkup(
     keyboard=[[appointment_button], [about_us_button], [help_button]],
     resize_keyboard=True)
-procedures_keyboard: ReplyKeyboardMarkup = ReplyKeyboardMarkup(keyboard=[
-    [makeup_button], [hair_coloring_button], [manicure_button], [help_button]
-    ], resize_keyboard=True)
 choose_master_or_date_keyboard: ReplyKeyboardMarkup = ReplyKeyboardMarkup(
     keyboard=[
         [choose_master_button], [choose_date_button], [help_button]
@@ -114,7 +111,6 @@ async def process_start_command(message: Message, state: FSMContext):
                                    'master': None,
                                    'name': None,
                                    'phone': None,
-                                   'feedback': None,
                                    }
     if message.from_user.id in existing_users:
         keyboard = main_page_keyboard
@@ -136,15 +132,18 @@ async def process_about_us_button(message: Message):
 @dp.message(StateFilter(default_state),
             Text(text=['Записаться на процедуру', 'Да']))
 async def process_appointment_button(message: Message):
+    kb_builder: ReplyKeyboardBuilder = ReplyKeyboardBuilder()
+    buttons = [KeyboardButton(text=procedure) for procedure in procedures]
+    kb_builder.row(*buttons, width=1)
     await message.answer(text='Выберите процедуру:',
-                         reply_markup=procedures_keyboard)
+                         reply_markup=kb_builder.as_markup(resize_keyboard=True))
 
 
 @dp.message(StateFilter(default_state),
-            Text(text=['Макияж', 'Покраска волос', 'Маникюр']))
+            lambda msg: msg.text in procedures)
 async def show_prices(message: Message):
     users[message.from_user.id]['procedure'] = message.text
-    await message.answer(text=f'Стоимость услуги {prices[message.text]} рублей.',
+    await message.answer(text=f'Стоимость услуги {procedures[message.text]} рублей.',
                          reply_markup=approval_keyboard)
 
 
@@ -185,7 +184,7 @@ async def process_master_date_selection(message: Message):
 
 # случай, когда сначала выбираем мастера
 @dp.message(StateFilter(FSM.master_selection),
-            lambda msg: re.fullmatch(r'\d\d\.\d\d', msg.text))
+            lambda msg: re.fullmatch(r'\d\d\.\d\d \D\D', msg.text))
 async def process_master_time_selection(message: Message):
     users[message.from_user.id]['date'] = message.text
     master = users[message.from_user.id]['master']
@@ -219,7 +218,7 @@ async def process_contact_inf(message: Message, state: FSMContext):
 async def process_date_selection(message: Message, state: FSMContext):
     kb_builder: ReplyKeyboardBuilder = ReplyKeyboardBuilder()
     buttons = [KeyboardButton(text=date) for date in schedule.keys()]
-    kb_builder.row(*buttons)
+    kb_builder.row(*buttons, width=3)
     kb_builder.row(help_button)
     await message.answer(text='Выберите день:',
                          reply_markup=kb_builder.as_markup(resize_keyboard=True))
@@ -228,7 +227,7 @@ async def process_date_selection(message: Message, state: FSMContext):
 
 # случай, когда сначала выбираем время
 @dp.message(StateFilter(FSM.time_selection),
-            lambda msg: re.fullmatch(r'\d\d\.\d\d', msg.text))
+            lambda msg: re.fullmatch(r'\d\d\.\d\d \D\D', msg.text))
 async def process_time_selection(message: Message):
     users[message.from_user.id]['date'] = message.text
     kb_builder: ReplyKeyboardBuilder = ReplyKeyboardBuilder()
@@ -281,11 +280,14 @@ async def process_name_input(message: Message, state: FSMContext):
 @dp.message(StateFilter(FSM.fill_phone))
 async def process_phone_input(message: Message, state: FSMContext):
     users[message.from_user.id]['phone'] = message.text
+    users[message.from_user.id]['telegram_id'] = message.from_user.id
     await message.answer(
         text=f'Вы записаны на услугу:\n"{users[message.from_user.id]["procedure"]}"\nв '
         f'{users[message.from_user.id]["date"]} {users[message.from_user.id]["hour"]}\n\n'
         f'Имя мастера:\n{users[message.from_user.id]["master"]}')
     await state.set_state(default_state)
+    print(users[message.from_user.id])
+    Registration.create(users[message.from_user.id])
     # TODO: send_appointment(users[message.from_user.id]) - Функция, которая отправляет собранные в словарь users данные в БД для текущего пользователя
 
 
@@ -293,7 +295,7 @@ async def process_phone_input(message: Message, state: FSMContext):
             Text(text='Оставить отзыв'))
 async def process_feedback_master(message: Message, state: FSMContext):
     kb_builder: ReplyKeyboardBuilder = ReplyKeyboardBuilder()
-    buttons = [KeyboardButton(text=master) for master in masters_schedule]
+    buttons = [KeyboardButton(text=master) for master in masters]
     kb_builder.row(*buttons, width=3)
     await message.answer(
         text='Выберите мастера:',
@@ -302,14 +304,14 @@ async def process_feedback_master(message: Message, state: FSMContext):
 
 
 @dp.message(StateFilter(FSM.fill_feedback),
-            lambda msg: msg.text in masters_schedule)
+            lambda msg: msg.text in masters)
 async def process_feedback(message: Message, state: FSMContext):
     await message.answer(text='Оставьте ваш отзыв:',
                          reply_markup=ReplyKeyboardRemove())
 
 
 @dp.message(StateFilter(FSM.fill_feedback),
-            ~Text(text=['Записаться на процедуру', 'О нас', 'Возникли вопросы? Пожалуйста, свяжитесь с нашим менеджером', 'Оставить отзыв']))
+            ~Text(text=['Записаться на процедуру', 'О нас', 'Возникли вопросы? Свяжитесь с нашим менеджером', 'Оставить отзыв']))
 async def send_feedback(message: Message, state: FSMContext):
     feedbacks[message.from_user.id] = message.text
     await message.answer(text='Спасибо за отзыв!')
@@ -319,7 +321,7 @@ async def send_feedback(message: Message, state: FSMContext):
     # TODO send_feedback(feedbacks[message.from_user.id]) - Функция, которая отправляет отзыв в БД
 
 
-@dp.message(Text(text='Возникли вопросы? Пожалуйста, свяжитесь с нашим менеджером'))
+@dp.message(Text(text='Возникли вопросы? Свяжитесь с нашим менеджером'))
 async def process_help_button(message: Message):
     await message.answer(text='У вас возникли вопросы?\nПожалуйста, свяжитесь '
                          'с нашим менеджером по номеру: +7(ххх)ххх-хх-хх')
